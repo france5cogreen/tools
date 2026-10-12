@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPv4 Subnet Calculator — Network, Broadcast, Hosts, Wildcard | Free</title>
+  <meta name="description" content="Free IPv4 subnet calculator: enter an IP with CIDR or netmask and get network address, broadcast, usable host range, host count, wildcard mask and binary view. Runs in your browser." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/subnet-calculator/" />
+  <meta property="og:title" content="IPv4 Subnet Calculator" />
+  <meta property="og:description" content="Network, broadcast, usable hosts, wildcard and netmask from any IP/CIDR." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <link rel="stylesheet" href="../tools.css" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"IPv4 Subnet Calculator","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Francesco Di Rienzo"}}</script>
+</head>
+<body data-tool="subnet-calculator" data-root="../">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <div class="crumbs"><a href="../">~/tools</a> / subnet-calculator</div>
+      <header class="tool-head">
+        <span class="eyebrow">// networking</span>
+        <h1>IPv4 Subnet Calculator</h1>
+        <p class="lead">Type an address with a prefix (<code>10.20.30.40/26</code>) or a dotted netmask (<code>192.168.1.10 255.255.255.0</code>). Results update as you type.</p>
+        <span class="privacy-note">● runs 100% in your browser — nothing is uploaded</span>
+      </header>
+
+      <div class="panel">
+        <div class="row">
+          <div class="field">
+            <label for="in">IP address / CIDR or netmask</label>
+            <input type="text" id="in" value="192.168.10.77/26" spellcheck="false" autocomplete="off" />
+          </div>
+          <div class="field narrow">
+            <label for="pfx">Prefix</label>
+            <select id="pfx"></select>
+          </div>
+        </div>
+        <div class="err" id="err"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Result</h2>
+        <div id="res"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Binary</h2>
+        <div class="bits" id="bits"></div>
+      </div>
+
+      <article class="explain">
+        <h2>How subnetting works</h2>
+        <p>An IPv4 address is 32 bits. The prefix length (the number after the slash) says how many of those bits identify the <strong>network</strong>; the remaining bits identify <strong>hosts</strong> inside it. A <code>/26</code> keeps 26 network bits and leaves 6 host bits, so the block holds 2<sup>6</sup> = 64 addresses.</p>
+        <p>The first address of the block is the <strong>network address</strong> and the last is the <strong>broadcast address</strong>; neither can be assigned to a host, which is why a /26 has 62 usable hosts. The two exceptions are <code>/31</code> (point-to-point links, RFC 3021: both addresses usable) and <code>/32</code> (a single host route).</p>
+        <h2>Wildcard mask</h2>
+        <p>The wildcard mask is the bitwise inverse of the netmask (<code>255.255.255.192</code> → <code>0.0.0.63</code>). Cisco IOS ACLs and OSPF <code>network</code> statements use it instead of the netmask.</p>
+        <h2>Quick reference</h2>
+        <ul>
+          <li><code>/24</code> — 255.255.255.0 — 254 hosts</li>
+          <li><code>/25</code> — 255.255.255.128 — 126 hosts</li>
+          <li><code>/26</code> — 255.255.255.192 — 62 hosts</li>
+          <li><code>/27</code> — 255.255.255.224 — 30 hosts</li>
+          <li><code>/28</code> — 255.255.255.240 — 14 hosts</li>
+          <li><code>/29</code> — 255.255.255.248 — 6 hosts</li>
+          <li><code>/30</code> — 255.255.255.252 — 2 hosts</li>
+        </ul>
+      </article>
+
+      <section class="related" id="related"></section>
+    </div>
+  </main>
+
+  <script src="../registry.js"></script>
+  <script src="../tools.js"></script>
+  <script>
+    const inp = $("#in"), pfx = $("#pfx");
+    pfx.innerHTML = Array.from({ length: 33 }, (_, i) => `<option value="${i}">/${i} — ${IP4.str(IP4.mask(i))}</option>`).join("");
+
+    function ipClass(ip) {
+      const a = ip >>> 24;
+      if (a < 128) return "A"; if (a < 192) return "B"; if (a < 224) return "C"; if (a < 240) return "D (multicast)"; return "E (reserved)";
+    }
+    function scope(ip) {
+      const inR = (net, p) => ((ip & IP4.mask(p)) >>> 0) === IP4.parse(net);
+      if (inR("10.0.0.0", 8) || inR("172.16.0.0", 12) || inR("192.168.0.0", 16)) return "Private (RFC 1918)";
+      if (inR("100.64.0.0", 10)) return "Shared / CGNAT (RFC 6598)";
+      if (inR("127.0.0.0", 8)) return "Loopback";
+      if (inR("169.254.0.0", 16)) return "Link-local (APIPA)";
+      if (inR("224.0.0.0", 4)) return "Multicast";
+      if (inR("240.0.0.0", 4)) return "Reserved";
+      return "Public";
+    }
+    function bin(n, prefix) {
+      let s = "";
+      for (let i = 31; i >= 0; i--) {
+        const b = (n >>> i) & 1, net = 31 - i < prefix;
+        s += net ? `<span class="n">${b}</span>` : b;
+        if (i % 8 === 0 && i) s += ".";
+      }
+      return s;
+    }
+
+    function calc(fromSelect) {
+      let txt = inp.value.trim();
+      if (fromSelect) {
+        const ipPart = txt.split(/[\s/]/)[0];
+        inp.value = txt = `${ipPart}/${pfx.value}`;
+      }
+      let p = IP4.parseCidr(txt);
+      if (!p && IP4.parse(txt) != null) p = { ip: IP4.parse(txt), prefix: 32 };
+      if (!p) {
+        inp.classList.add("bad");
+        $("#err").textContent = "Enter something like 192.168.1.10/24 or 10.0.0.1 255.255.0.0 (netmask must be contiguous).";
+        return;
+      }
+      inp.classList.remove("bad"); $("#err").textContent = "";
+      pfx.value = p.prefix;
+      const mask = IP4.mask(p.prefix), wild = (~mask) >>> 0;
+      const net = (p.ip & mask) >>> 0, bc = (net | wild) >>> 0;
+      const total = 2 ** (32 - p.prefix);
+      let first, last, usable;
+      if (p.prefix === 32) { first = last = net; usable = 1; }
+      else if (p.prefix === 31) { first = net; last = bc; usable = 2; }
+      else { first = net + 1; last = bc - 1; usable = total - 2; }
+      $("#res").innerHTML = kvTable([
+        ["Address", IP4.str(p.ip)],
+        ["CIDR notation", `${IP4.str(net)}/${p.prefix}`, true],
+        ["Netmask", IP4.str(mask)],
+        ["Wildcard mask", IP4.str(wild)],
+        ["Network address", IP4.str(net)],
+        ["Broadcast address", p.prefix >= 31 ? "n/a" : IP4.str(bc)],
+        ["Usable host range", `${IP4.str(first)} – ${IP4.str(last)}`, true],
+        ["Usable hosts", usable.toLocaleString("en-US")],
+        ["Total addresses", total.toLocaleString("en-US")],
+        ["Class / scope", `${ipClass(p.ip)} · ${scope(p.ip)}`],
+        ["Hex", "0x" + p.ip.toString(16).padStart(8, "0").toUpperCase()],
+        ["Integer", String(p.ip)]
+      ]);
+      $("#bits").innerHTML =
+        `address&nbsp;&nbsp;${bin(p.ip, p.prefix)}<br>netmask&nbsp;&nbsp;${bin(mask, p.prefix)}<br>network&nbsp;&nbsp;${bin(net, p.prefix)}`;
+    }
+    inp.addEventListener("input", () => calc(false));
+    pfx.addEventListener("change", () => calc(true));
+    calc(false);
+  </script>
+</body>
+</html>

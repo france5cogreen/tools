@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chmod Calculator — Octal &amp; Symbolic Linux Permissions | Free</title>
+  <meta name="description" content="Linux chmod calculator: tick read/write/execute for owner, group and others, or type an octal mode like 755 or 4750, or a string like rwxr-xr-x. Get octal, symbolic and the chmod command, with setuid, setgid and sticky bit." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/chmod-calculator/" />
+  <meta property="og:title" content="Chmod Calculator" />
+  <meta property="og:description" content="Toggle permissions or type an octal mode: get symbolic notation and the chmod command." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <link rel="stylesheet" href="../tools.css" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Chmod Calculator","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Francesco Di Rienzo"}}</script>
+</head>
+<body data-tool="chmod-calculator" data-root="../">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <div class="crumbs"><a href="../">~/tools</a> / chmod-calculator</div>
+      <header class="tool-head">
+        <span class="eyebrow">// linux</span>
+        <h1>Chmod Calculator</h1>
+        <p class="lead">Tick the boxes, or type an octal mode (<code>644</code>, <code>2775</code>) or a permission string (<code>rwxr-x---</code>, as printed by <code>ls -l</code>). Everything stays in sync.</p>
+        <span class="privacy-note">● runs 100% in your browser — nothing is uploaded</span>
+      </header>
+
+      <div class="panel">
+        <div class="perm-grid" id="grid"></div>
+        <div class="row" style="margin-top:18px;gap:18px">
+          <label class="check"><input type="checkbox" id="suid" /> setuid (4)</label>
+          <label class="check"><input type="checkbox" id="sgid" /> setgid (2)</label>
+          <label class="check"><input type="checkbox" id="sticky" /> sticky (1)</label>
+        </div>
+        <div class="row" style="margin-top:18px">
+          <div class="field narrow"><label for="oct">Octal</label><input type="text" id="oct" value="755" maxlength="4" spellcheck="false" /></div>
+          <div class="field"><label for="sym">Symbolic</label><input type="text" id="sym" maxlength="10" spellcheck="false" /></div>
+          <div class="field"><label for="file">File name</label><input type="text" id="file" value="script.sh" spellcheck="false" /></div>
+        </div>
+        <div class="err" id="err"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Command</h2>
+        <div id="res"></div>
+      </div>
+
+      <article class="explain">
+        <h2>Reading permissions</h2>
+        <p>Each class — <strong>owner (u)</strong>, <strong>group (g)</strong>, <strong>others (o)</strong> — gets three bits: read = 4, write = 2, execute = 1. Add them per class to get one octal digit: <code>rwx</code> = 7, <code>r-x</code> = 5, <code>r--</code> = 4. So <code>755</code> is <code>rwxr-xr-x</code>.</p>
+        <h2>Common modes</h2>
+        <ul>
+          <li><code>644</code> <code>rw-r--r--</code> — regular files, web content</li>
+          <li><code>755</code> <code>rwxr-xr-x</code> — directories, scripts and binaries</li>
+          <li><code>600</code> <code>rw-------</code> — private keys (<code>~/.ssh/id_ed25519</code>), credentials</li>
+          <li><code>700</code> <code>rwx------</code> — <code>~/.ssh</code> directory</li>
+          <li><code>1777</code> <code>rwxrwxrwt</code> — <code>/tmp</code>: anyone can write, only owners can delete</li>
+          <li><code>2775</code> <code>rwxrwsr-x</code> — shared team directory: new files inherit the group</li>
+        </ul>
+        <h2>Special bits</h2>
+        <p><strong>setuid</strong> runs an executable with the owner's privileges (e.g. <code>/usr/bin/passwd</code>) — a classic privilege-escalation target, audit them with <code>find / -perm -4000</code>. <strong>setgid</strong> on a directory makes new files inherit its group. The <strong>sticky bit</strong> on a directory lets only a file's owner delete it. Avoid <code>777</code>: world-writable files are almost always a mistake.</p>
+      </article>
+
+      <section class="related" id="related"></section>
+    </div>
+  </main>
+
+  <script src="../registry.js"></script>
+  <script src="../tools.js"></script>
+  <script>
+    const WHO = [["Owner", "u"], ["Group", "g"], ["Others", "o"]], WHAT = [["Read", 4], ["Write", 2], ["Execute", 1]];
+    $("#grid").innerHTML = `<div class="h"></div>${WHAT.map(([w]) => `<div class="h">${w}</div>`).join("")}` +
+      WHO.map(([n, k]) => `<div class="h">${n}</div>` + WHAT.map(([, v]) =>
+        `<div><label class="check"><input type="checkbox" data-who="${k}" data-v="${v}" /></label></div>`).join("")).join("");
+
+    let mode = 0o755;
+
+    function symbolic(m) {
+      const t = (d, sp, ch) => {
+        const r = d & 4 ? "r" : "-", w = d & 2 ? "w" : "-", x = d & 1;
+        return r + w + (sp ? (x ? ch : ch.toUpperCase()) : (x ? "x" : "-"));
+      };
+      return t((m >> 6) & 7, m & 0o4000, "s") + t((m >> 3) & 7, m & 0o2000, "s") + t(m & 7, m & 0o1000, "t");
+    }
+    function fromSymbolic(s) {
+      s = s.trim().replace(/^[-dlcbps](?=.{9}$)/, "");
+      if (!/^[r-][w-][xsS-][r-][w-][xsS-][r-][w-][xtT-]$/.test(s)) return null;
+      let m = 0;
+      [0, 3, 6].forEach((o, i) => {
+        const shift = 6 - i * 3;
+        if (s[o] === "r") m |= 4 << shift;
+        if (s[o + 1] === "w") m |= 2 << shift;
+        const x = s[o + 2];
+        if ("xst".includes(x)) m |= 1 << shift;
+        if ("sStT".includes(x)) m |= [0o4000, 0o2000, 0o1000][i];
+      });
+      return m;
+    }
+
+    function render(skip) {
+      $$("#grid input").forEach(c => {
+        const sh = { u: 6, g: 3, o: 0 }[c.dataset.who];
+        c.checked = !!(mode & (c.dataset.v << sh));
+      });
+      $("#suid").checked = !!(mode & 0o4000); $("#sgid").checked = !!(mode & 0o2000); $("#sticky").checked = !!(mode & 0o1000);
+      const oct = (mode > 0o777 ? mode.toString(8).padStart(4, "0") : mode.toString(8).padStart(3, "0"));
+      if (skip !== "oct") $("#oct").value = oct;
+      if (skip !== "sym") $("#sym").value = symbolic(mode);
+      const f = $("#file").value.trim() || "file";
+      const qf = /^[\w./-]+$/.test(f) ? f : `'${f.replace(/'/g, `'\\''`)}'`;
+      const u = (mode >> 6) & 7, g = (mode >> 3) & 7, o = mode & 7;
+      const part = d => (d & 4 ? "r" : "") + (d & 2 ? "w" : "") + (d & 1 ? "x" : "");
+      const rows = [
+        ["Octal command", `chmod ${oct} ${qf}`, true],
+        ["Symbolic command", `chmod u=${part(u)},g=${part(g)},o=${part(o)} ${qf}`],
+        ["ls -l shows", "-" + symbolic(mode)],
+        ["Recursive (dirs only)", `find ${qf} -type d -exec chmod ${oct} {} +`]
+      ];
+      $("#res").innerHTML = kvTable(rows);
+      const warn = [];
+      if ((mode & 2) && !(mode & 0o1000)) warn.push("⚠ world-writable");
+      if (mode & 0o4000) warn.push("⚠ setuid: runs with the owner's privileges");
+      $("#err").textContent = warn.join("  ");
+    }
+
+    $("#grid").addEventListener("change", e => {
+      const c = e.target, sh = { u: 6, g: 3, o: 0 }[c.dataset.who], bit = c.dataset.v << sh;
+      mode = c.checked ? mode | bit : mode & ~bit; render();
+    });
+    [["#suid", 0o4000], ["#sgid", 0o2000], ["#sticky", 0o1000]].forEach(([s, b]) =>
+      $(s).addEventListener("change", e => { mode = e.target.checked ? mode | b : mode & ~b; render(); }));
+    $("#oct").addEventListener("input", e => {
+      const v = e.target.value.trim(), ok = /^[0-7]{3,4}$/.test(v);
+      e.target.classList.toggle("bad", !ok);
+      if (ok) { mode = parseInt(v, 8); render("oct"); }
+    });
+    $("#sym").addEventListener("input", e => {
+      const m = fromSymbolic(e.target.value);
+      e.target.classList.toggle("bad", m == null);
+      if (m != null) { mode = m; render("sym"); }
+    });
+    $("#file").addEventListener("input", () => render("oct"));
+    render();
+  </script>
+</body>
+</html>

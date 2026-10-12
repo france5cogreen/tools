@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unix Timestamp Converter — Epoch to Date &amp; Date to Epoch | Free</title>
+  <meta name="description" content="Convert Unix epoch timestamps (seconds, milliseconds, microseconds) to UTC and local dates, and dates back to epoch. ISO 8601, RFC 2822 and relative time. Live current timestamp." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/timestamp-converter/" />
+  <meta property="og:title" content="Unix Timestamp Converter" />
+  <meta property="og:description" content="Epoch seconds or milliseconds to UTC/local dates and back, ISO 8601 included." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <link rel="stylesheet" href="../tools.css" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Unix Timestamp Converter","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Francesco Di Rienzo"}}</script>
+</head>
+<body data-tool="timestamp-converter" data-root="../">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <div class="crumbs"><a href="../">~/tools</a> / timestamp-converter</div>
+      <header class="tool-head">
+        <span class="eyebrow">// dev</span>
+        <h1>Unix Timestamp Converter</h1>
+        <p class="lead">Paste an epoch value — seconds, milliseconds or microseconds are detected automatically — or any date string such as <code>2026-10-12T14:30:00Z</code>.</p>
+        <span class="privacy-note">● runs 100% in your browser — nothing is uploaded</span>
+      </header>
+
+      <div class="panel">
+        <h2>Now</h2>
+        <div class="row" style="align-items:center">
+          <div class="out big-out" id="now" style="flex:1 1 220px"></div>
+          <button class="btn sm" data-copy-from="#now">copy</button>
+          <button class="btn sm" id="use-now">use</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="field">
+          <label for="in">Timestamp or date</label>
+          <input type="text" id="in" spellcheck="false" autocomplete="off" />
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="field">
+            <label for="pick">…or pick a local date &amp; time</label>
+            <input type="datetime-local" id="pick" step="1" />
+          </div>
+        </div>
+        <div class="err" id="err"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Result <span id="unit" style="color:var(--text-faint)"></span></h2>
+        <div id="res"></div>
+      </div>
+
+      <article class="explain">
+        <h2>What is Unix time?</h2>
+        <p>Unix time counts the seconds elapsed since <strong>1970-01-01 00:00:00 UTC</strong> (the epoch), ignoring leap seconds. It is timezone-independent, which is why logs, databases and APIs store it.</p>
+        <h2>Seconds, milliseconds or microseconds?</h2>
+        <ul>
+          <li><strong>10 digits</strong> — seconds (<code>date +%s</code>, PHP, Python <code>time.time()</code> truncated, JWT claims)</li>
+          <li><strong>13 digits</strong> — milliseconds (JavaScript <code>Date.now()</code>, Java)</li>
+          <li><strong>16 digits</strong> — microseconds (some databases and tracing systems)</li>
+        </ul>
+        <h2>The year 2038 problem</h2>
+        <p>Systems that store Unix time in a signed 32-bit integer overflow at <code>2147483647</code> — 2038-01-19 03:14:07 UTC. Embedded devices and old firmware are the usual suspects.</p>
+        <h2>Command line</h2>
+        <p>Linux: <code>date -d @1760277000</code> · macOS: <code>date -r 1760277000</code> · PowerShell: <code>[DateTimeOffset]::FromUnixTimeSeconds(1760277000)</code></p>
+      </article>
+
+      <section class="related" id="related"></section>
+    </div>
+  </main>
+
+  <script src="../registry.js"></script>
+  <script src="../tools.js"></script>
+  <script>
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const pad = n => String(n).padStart(2, "0");
+    const localInput = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+    function rel(ms) {
+      const d = (ms - Date.now()) / 1000, a = Math.abs(d);
+      const units = [["year", 31557600], ["day", 86400], ["hour", 3600], ["minute", 60], ["second", 1]];
+      const [u, s] = units.find(([, s]) => a >= s) || units[4];
+      return new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(Math.round(d / s), u);
+    }
+
+    function parse(v) {
+      v = v.trim();
+      if (/^-?\d+(\.\d+)?$/.test(v)) {
+        const n = Number(v), digits = v.replace(/^-/, "").split(".")[0].length;
+        if (digits >= 15) return { ms: n / 1000, unit: "microseconds" };
+        if (digits >= 12) return { ms: n, unit: "milliseconds" };
+        return { ms: n * 1000, unit: "seconds" };
+      }
+      const t = Date.parse(v);
+      return isNaN(t) ? null : { ms: t, unit: "date string" };
+    }
+
+    function show(p) {
+      const d = new Date(p.ms);
+      if (isNaN(d)) { $("#err").textContent = "Out of range."; return; }
+      $("#err").textContent = "";
+      $("#unit").textContent = `· input read as ${p.unit}`;
+      const local = d.toLocaleString("en-GB", { dateStyle: "full", timeStyle: "long" });
+      $("#res").innerHTML = kvTable([
+        ["Unix (seconds)", String(Math.floor(p.ms / 1000)), true],
+        ["Unix (milliseconds)", String(Math.round(p.ms))],
+        ["ISO 8601 (UTC)", d.toISOString()],
+        ["RFC 2822 / HTTP", d.toUTCString()],
+        [`Local (${tz})`, local],
+        ["Relative", rel(p.ms)],
+        ["Day of year · ISO week", `${dayOfYear(d)} · W${isoWeek(d)}`]
+      ]);
+      $("#pick").value = localInput(d);
+    }
+    function dayOfYear(d) { return Math.floor((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - Date.UTC(d.getUTCFullYear(), 0, 1)) / 864e5) + 1; }
+    function isoWeek(d) {
+      const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
+      return Math.ceil(((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 864e5 + 1) / 7);
+    }
+
+    function run() {
+      const v = $("#in").value;
+      if (!v.trim()) return;
+      const p = parse(v);
+      $("#in").classList.toggle("bad", !p);
+      if (!p) { $("#err").textContent = "Not a number or a recognizable date (try ISO 8601: 2026-10-12T14:30:00Z)."; return; }
+      show(p);
+    }
+    $("#in").addEventListener("input", run);
+    $("#pick").addEventListener("change", () => {
+      const t = new Date($("#pick").value).getTime();
+      if (!isNaN(t)) { $("#in").value = String(Math.floor(t / 1000)); run(); }
+    });
+    $("#use-now").addEventListener("click", () => { $("#in").value = String(Math.floor(Date.now() / 1000)); run(); });
+    const tick = () => { $("#now").textContent = Math.floor(Date.now() / 1000); };
+    tick(); setInterval(tick, 1000);
+    $("#in").value = String(Math.floor(Date.now() / 1000));
+    run();
+  </script>
+</body>
+</html>

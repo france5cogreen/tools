@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FortiGate Address Object Generator — Bulk FortiOS CLI | Free</title>
+  <meta name="description" content="Bulk-create FortiGate firewall address objects and an address group: paste IPs, subnets, ranges or FQDNs and get ready-to-paste FortiOS CLI. Free, runs in your browser." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/fortigate-address-generator/" />
+  <meta property="og:title" content="FortiGate Address Object Generator" />
+  <meta property="og:description" content="Paste IPs, subnets, ranges or FQDNs and get ready-to-paste FortiOS CLI with an address group." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <link rel="stylesheet" href="../tools.css" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"FortiGate Address Object Generator","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Francesco Di Rienzo"}}</script>
+</head>
+<body data-tool="fortigate-address-generator" data-root="../">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <div class="crumbs"><a href="../">~/tools</a> / fortigate-address-generator</div>
+      <header class="tool-head">
+        <span class="eyebrow">// fortinet</span>
+        <h1>FortiGate Address Object Generator</h1>
+        <p class="lead">Paste one entry per line: host IPs, subnets (CIDR or netmask), ranges or FQDNs. Optionally name an entry with <code>Name, value</code>. You get <code>config firewall address</code> plus an address group, ready to paste into the FortiOS CLI.</p>
+        <span class="privacy-note">● runs 100% in your browser — your addressing never leaves this page</span>
+      </header>
+
+      <div class="panel">
+        <h2>Input</h2>
+        <div class="field">
+          <label for="in">Entries</label>
+          <textarea id="in" spellcheck="false">10.10.0.0/16
+192.168.50.0 255.255.255.0
+172.16.1.10
+172.16.2.100-172.16.2.150
+WebServer, 203.0.113.25
+update.example.com</textarea>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="field"><label for="grp">Address group name (empty = none)</label><input type="text" id="grp" value="GRP-Imported" /></div>
+          <div class="field"><label for="cmt">Comment</label><input type="text" id="cmt" value="" placeholder="e.g. CHG-1234" /></div>
+          <div class="field narrow"><label for="vdom">VDOM (optional)</label><input type="text" id="vdom" value="" placeholder="root" /></div>
+        </div>
+        <div class="row" style="margin-top:16px">
+          <label class="check"><input type="checkbox" id="typepfx" checked /> type prefixes (H- N- R- F-)</label>
+          <label class="check"><input type="checkbox" id="routing" /> set allow-routing enable</label>
+        </div>
+        <div class="err" id="err"></div>
+      </div>
+
+      <div class="panel">
+        <h2>FortiOS CLI</h2>
+        <div class="out" id="out"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary sm" data-copy-from="#out">copy CLI</button>
+          <button class="btn sm" id="dl">download .conf</button>
+        </div>
+      </div>
+
+      <article class="explain">
+        <h2>What it generates</h2>
+        <ul>
+          <li><strong>Host</strong> <code>172.16.1.10</code> → <code>set subnet 172.16.1.10 255.255.255.255</code></li>
+          <li><strong>Subnet</strong> <code>10.10.0.0/16</code> → <code>set subnet 10.10.0.0 255.255.0.0</code> (host bits are aligned to the network)</li>
+          <li><strong>Range</strong> <code>a.b.c.d-e.f.g.h</code> → <code>set type iprange</code> with <code>start-ip</code>/<code>end-ip</code></li>
+          <li><strong>FQDN</strong> <code>update.example.com</code> → <code>set type fqdn</code></li>
+          <li>An <code>addrgrp</code> containing every object, if a group name is set</li>
+        </ul>
+        <h2>Naming</h2>
+        <p>Objects are named after their value (<code>N-10.10.0.0_16</code>, <code>H-172.16.1.10</code>), which keeps policies readable and avoids duplicates. Use <code>Name, value</code> to override a single entry. Names are trimmed to the FortiOS limit of 79 characters and duplicates in the input are dropped.</p>
+        <h2>Tips</h2>
+        <p>Review the output before pasting it on a production unit: <code>edit</code> on an existing name modifies that object. On multi-VDOM units set the VDOM field so the script enters the right context. Wildcard FQDNs (<code>*.example.com</code>) are emitted as <code>type fqdn</code>; on recent FortiOS versions you may prefer <code>type wildcard-fqdn</code> instead.</p>
+      </article>
+
+      <section class="related" id="related"></section>
+    </div>
+  </main>
+
+  <script src="../registry.js"></script>
+  <script src="../tools.js"></script>
+  <script>
+    const FQDN = /^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+    const q = s => `"${String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+    const clip = s => s.slice(0, 79);
+
+    function parse(value) {
+      const v = value.trim();
+      const rm = v.match(/^([\d.]+)\s*(?:-|–)\s*([\d.]+)$/);
+      if (rm) {
+        const a = IP4.parse(rm[1]), b = IP4.parse(rm[2]);
+        if (a != null && b != null) {
+          const [s, e] = a <= b ? [a, b] : [b, a];
+          return { kind: "range", start: IP4.str(s), end: IP4.str(e), key: `${s}-${e}` };
+        }
+      }
+      if (IP4.parse(v) != null) return { kind: "host", ip: IP4.str(IP4.parse(v)), key: `${IP4.parse(v)}/32` };
+      const c = IP4.parseCidr(v);
+      if (c) {
+        const net = (c.ip & IP4.mask(c.prefix)) >>> 0;
+        if (c.prefix === 32) return { kind: "host", ip: IP4.str(net), key: `${net}/32` };
+        return { kind: "subnet", ip: IP4.str(net), prefix: c.prefix, mask: IP4.str(IP4.mask(c.prefix)), key: `${net}/${c.prefix}` };
+      }
+      if (FQDN.test(v)) return { kind: "fqdn", fqdn: v.toLowerCase(), key: v.toLowerCase() };
+      return null;
+    }
+
+    function autoName(o, typed) {
+      const p = typed ? { host: "H-", subnet: "N-", range: "R-", fqdn: "F-" }[o.kind] : "";
+      if (o.kind === "host") return p + o.ip;
+      if (o.kind === "subnet") return `${p}${o.ip}_${o.prefix}`;
+      if (o.kind === "range") return `${p}${o.start}-${o.end}`;
+      return p + o.fqdn;
+    }
+
+    function run() {
+      const typed = $("#typepfx").checked, routing = $("#routing").checked;
+      const cmt = $("#cmt").value.trim(), grp = $("#grp").value.trim(), vdom = $("#vdom").value.trim();
+      const objs = [], seen = new Set(), names = new Set(), bad = [];
+      for (const raw of $("#in").value.split(/\n/)) {
+        const line = raw.trim();
+        if (!line || line.startsWith("#")) continue;
+        let name = null, value = line;
+        const ci = line.indexOf(",");
+        if (ci > -1) { name = line.slice(0, ci).trim(); value = line.slice(ci + 1).trim(); }
+        const o = parse(value);
+        if (!o) { bad.push(line); continue; }
+        if (seen.has(o.key)) continue;
+        seen.add(o.key);
+        o.name = clip(name || autoName(o, typed));
+        if (names.has(o.name)) { bad.push(`${line} (duplicate name)`); continue; }
+        names.add(o.name);
+        objs.push(o);
+      }
+
+      const I = "    ", out = [];
+      if (vdom) out.push("config vdom", `${I}edit ${vdom}`);
+      if (objs.length) {
+        out.push("config firewall address");
+        for (const o of objs) {
+          out.push(`${I}edit ${q(o.name)}`);
+          if (o.kind === "host") out.push(`${I}${I}set subnet ${o.ip} 255.255.255.255`);
+          if (o.kind === "subnet") out.push(`${I}${I}set subnet ${o.ip} ${o.mask}`);
+          if (o.kind === "range") out.push(`${I}${I}set type iprange`, `${I}${I}set start-ip ${o.start}`, `${I}${I}set end-ip ${o.end}`);
+          if (o.kind === "fqdn") out.push(`${I}${I}set type fqdn`, `${I}${I}set fqdn ${q(o.fqdn)}`);
+          if (cmt) out.push(`${I}${I}set comment ${q(cmt)}`);
+          if (routing && (o.kind === "host" || o.kind === "subnet")) out.push(`${I}${I}set allow-routing enable`);
+          out.push(`${I}next`);
+        }
+        out.push("end");
+        if (grp) {
+          out.push("config firewall addrgrp", `${I}edit ${q(clip(grp))}`,
+            `${I}${I}set member ${objs.map(o => q(o.name)).join(" ")}`);
+          if (cmt) out.push(`${I}${I}set comment ${q(cmt)}`);
+          if (routing && objs.every(o => o.kind === "host" || o.kind === "subnet")) out.push(`${I}${I}set allow-routing enable`);
+          out.push(`${I}next`, "end");
+        }
+      }
+      if (vdom) out.push("end");
+      $("#out").textContent = objs.length ? out.join("\n") : "# nothing to generate yet";
+      $("#err").textContent = bad.length ? `Skipped ${bad.length}: ${bad.join(" · ")}` : "";
+    }
+
+    ["#in", "#grp", "#cmt", "#vdom"].forEach(s => $(s).addEventListener("input", run));
+    ["#typepfx", "#routing"].forEach(s => $(s).addEventListener("change", run));
+    $("#dl").addEventListener("click", () => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([$("#out").textContent + "\n"], { type: "text/plain" }));
+      a.download = "fortigate-addresses.conf";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+    run();
+  </script>
+</body>
+</html>

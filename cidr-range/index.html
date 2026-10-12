@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CIDR to IP Range &amp; IP Range to CIDR Converter | Free</title>
+  <meta name="description" content="Convert CIDR blocks to IP ranges and any start–end IP range into the minimal list of CIDR subnets. Bulk input, runs entirely in your browser." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/cidr-range/" />
+  <meta property="og:title" content="CIDR ↔ IP Range Converter" />
+  <meta property="og:description" content="Expand a CIDR into its range, or turn any start–end range into the minimal CIDR list." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <link rel="stylesheet" href="../tools.css" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"CIDR to IP Range Converter","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Francesco Di Rienzo"}}</script>
+</head>
+<body data-tool="cidr-range" data-root="../">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <div class="crumbs"><a href="../">~/tools</a> / cidr-range</div>
+      <header class="tool-head">
+        <span class="eyebrow">// networking</span>
+        <h1>CIDR ↔ IP Range Converter</h1>
+        <p class="lead">One entry per line. A CIDR (<code>10.0.0.0/22</code>) expands to its first and last address; a range (<code>10.0.0.5 - 10.0.1.20</code>) collapses into the smallest set of CIDR blocks that covers it exactly.</p>
+        <span class="privacy-note">● runs 100% in your browser — nothing is uploaded</span>
+      </header>
+
+      <div class="panel">
+        <div class="field">
+          <label for="in">CIDRs and/or ranges</label>
+          <textarea id="in" spellcheck="false">10.0.0.0/22
+192.168.1.10 - 192.168.1.75
+172.16.5.0/255.255.255.128</textarea>
+        </div>
+        <div class="err" id="err"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Result</h2>
+        <div class="out" id="out"></div>
+        <div class="btn-row"><button class="btn sm" data-copy-from="#out">copy all</button></div>
+      </div>
+
+      <article class="explain">
+        <h2>Why convert ranges to CIDR?</h2>
+        <p>Firewalls, routers and cloud security groups usually accept subnets, not arbitrary ranges. To allow <code>192.168.1.10 – 192.168.1.75</code> you need the exact set of aligned blocks that covers those addresses and nothing else — here that is <code>192.168.1.10/31</code>, <code>/30</code>, <code>/28</code>, <code>/27</code>, <code>/29</code>, <code>/30</code>. Doing it by hand is slow and error-prone.</p>
+        <h2>How the algorithm works</h2>
+        <p>Starting from the first address, the converter picks the largest block that is both aligned on its own size and does not overshoot the end of the range, emits it, and moves to the next address. The result is always the minimal list of CIDRs.</p>
+        <h2>Accepted formats</h2>
+        <ul>
+          <li><code>10.0.0.0/22</code> or <code>10.0.0.0/255.255.252.0</code></li>
+          <li><code>10.0.0.5-10.0.0.9</code>, <code>10.0.0.5 - 10.0.0.9</code>, <code>10.0.0.5 10.0.0.9</code></li>
+          <li>A single address is treated as a /32</li>
+        </ul>
+      </article>
+
+      <section class="related" id="related"></section>
+    </div>
+  </main>
+
+  <script src="../registry.js"></script>
+  <script src="../tools.js"></script>
+  <script>
+    function run() {
+      const lines = $("#in").value.split(/\n/).map(l => l.trim()).filter(Boolean);
+      const out = [], bad = [];
+      for (const l of lines) {
+        const rm = l.match(/^([\d.]+)\s*(?:-|–|\s)\s*([\d.]+)$/);
+        const a = rm && IP4.parse(rm[1]), b = rm && IP4.parse(rm[2]);
+        if (rm && a != null && b != null) {
+          const [s, e] = a <= b ? [a, b] : [b, a];
+          const cidrs = IP4.rangeToCidrs(s, e);
+          out.push(`# ${IP4.str(s)} - ${IP4.str(e)}  (${(e - s + 1).toLocaleString("en-US")} addresses → ${cidrs.length} CIDR)`);
+          cidrs.forEach(c => out.push(`${IP4.str(c.ip)}/${c.prefix}`));
+          out.push("");
+          continue;
+        }
+        let c = IP4.parseCidr(l);
+        if (!c && IP4.parse(l) != null) c = { ip: IP4.parse(l), prefix: 32 };
+        if (c) {
+          const mask = IP4.mask(c.prefix), net = (c.ip & mask) >>> 0, last = (net | ~mask) >>> 0;
+          const note = net !== c.ip ? "  (host bits set, aligned to network)" : "";
+          out.push(`# ${IP4.str(net)}/${c.prefix}${note}`);
+          out.push(`${IP4.str(net)} - ${IP4.str(last)}  (${(2 ** (32 - c.prefix)).toLocaleString("en-US")} addresses)`);
+          out.push("");
+          continue;
+        }
+        bad.push(l);
+      }
+      $("#out").textContent = out.join("\n").trim();
+      $("#err").textContent = bad.length ? `Could not parse: ${bad.join(", ")}` : "";
+      $("#in").classList.toggle("bad", bad.length > 0);
+    }
+    $("#in").addEventListener("input", run);
+    run();
+  </script>
+</body>
+</html>

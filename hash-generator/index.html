@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hash Generator — MD5, SHA-1, SHA-256, SHA-512 Online | Free</title>
+  <meta name="description" content="Compute MD5, SHA-1, SHA-256, SHA-384 and SHA-512 hashes of text or files directly in your browser, in hex or Base64. Compare against an expected checksum. Nothing is uploaded." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/hash-generator/" />
+  <meta property="og:title" content="Hash Generator" />
+  <meta property="og:description" content="MD5, SHA-1, SHA-256, SHA-384 and SHA-512 of any text, computed locally." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <link rel="stylesheet" href="../tools.css" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Hash Generator","applicationCategory":"SecurityApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Francesco Di Rienzo"}}</script>
+</head>
+<body data-tool="hash-generator" data-root="../">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <div class="crumbs"><a href="../">~/tools</a> / hash-generator</div>
+      <header class="tool-head">
+        <span class="eyebrow">// security</span>
+        <h1>Hash Generator</h1>
+        <p class="lead">Type text or drop a file (an ISO, a firmware image) to get its MD5 and SHA digests. Paste the vendor's checksum in the compare box to verify a download.</p>
+        <span class="privacy-note">● hashed in your browser — files are never uploaded</span>
+      </header>
+
+      <div class="panel">
+        <div class="field">
+          <label for="in">Text (UTF-8)</label>
+          <textarea id="in" spellcheck="false">hello world</textarea>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="field">
+            <label for="file">…or a file</label>
+            <input type="file" id="file" style="font-family:var(--font-mono);font-size:13px;color:var(--text-dim)" />
+          </div>
+          <div class="field narrow">
+            <label for="enc">Output</label>
+            <select id="enc"><option value="hex">hex</option><option value="HEX">HEX</option><option value="b64">Base64</option></select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="field">
+            <label for="cmp">Compare with expected hash (optional)</label>
+            <input type="text" id="cmp" spellcheck="false" placeholder="paste a checksum to verify" />
+          </div>
+        </div>
+        <div class="err" id="err"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Digests <span id="src" style="color:var(--text-faint)"></span></h2>
+        <div id="res"></div>
+      </div>
+
+      <article class="explain">
+        <h2>Which hash should I use?</h2>
+        <ul>
+          <li><strong>SHA-256</strong> — the default today for file checksums, certificates and integrity checks.</li>
+          <li><strong>SHA-384 / SHA-512</strong> — longer digests, common in TLS cipher suites and some firmware signatures.</li>
+          <li><strong>SHA-1</strong> and <strong>MD5</strong> — broken for collision resistance. Fine to match an old checksum, never for signatures or anything security-relevant.</li>
+        </ul>
+        <h2>Hashes are not for passwords</h2>
+        <p>A plain SHA or MD5 is far too fast for storing passwords: use a dedicated slow function such as Argon2id, scrypt or bcrypt. A hash is also not encryption — it cannot be reversed, only recomputed and compared.</p>
+        <h2>Verifying a download</h2>
+        <p>Drop the file, paste the checksum published by the vendor into the compare box: the matching algorithm is highlighted. On the command line the equivalents are <code>sha256sum file</code> (Linux), <code>shasum -a 256 file</code> (macOS) and <code>Get-FileHash file</code> (PowerShell).</p>
+      </article>
+
+      <section class="related" id="related"></section>
+    </div>
+  </main>
+
+  <script src="../registry.js"></script>
+  <script src="../tools.js"></script>
+  <script>
+    /* Compact MD5 (RFC 1321) — WebCrypto does not offer it. Input: Uint8Array. */
+    function md5(bytes) {
+      const K = new Uint32Array(64), S = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+      for (let i = 0; i < 64; i++) K[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 2 ** 32);
+      const n = bytes.length, padLen = ((n + 8) >> 6) + 1 << 6;
+      const buf = new Uint8Array(padLen);
+      buf.set(bytes); buf[n] = 0x80;
+      const dv = new DataView(buf.buffer);
+      dv.setUint32(padLen - 8, (n * 8) >>> 0, true);
+      dv.setUint32(padLen - 4, Math.floor(n / 0x20000000), true);
+      let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+      const M = new Uint32Array(16);
+      for (let off = 0; off < padLen; off += 64) {
+        for (let i = 0; i < 16; i++) M[i] = dv.getUint32(off + i * 4, true);
+        let A = a0, B = b0, C = c0, D = d0;
+        for (let i = 0; i < 64; i++) {
+          let F, g;
+          if (i < 16) { F = (B & C) | (~B & D); g = i; }
+          else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) % 16; }
+          else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) % 16; }
+          else { F = C ^ (B | ~D); g = (7 * i) % 16; }
+          const s = S[(i >> 4) * 4 + (i % 4)];
+          const t = (A + F + K[i] + M[g]) >>> 0;
+          A = D; D = C; C = B;
+          B = (B + ((t << s) | (t >>> (32 - s)))) >>> 0;
+        }
+        a0 = (a0 + A) >>> 0; b0 = (b0 + B) >>> 0; c0 = (c0 + C) >>> 0; d0 = (d0 + D) >>> 0;
+      }
+      const out = new Uint8Array(16), ov = new DataView(out.buffer);
+      [a0, b0, c0, d0].forEach((v, i) => ov.setUint32(i * 4, v, true));
+      return out;
+    }
+
+    const toHex = b => [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+    const toB64 = b => { let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000)); return btoa(s); };
+
+    let bytes = new TextEncoder().encode($("#in").value), label = "text";
+    let seq = 0;
+
+    async function run() {
+      const my = ++seq;
+      const algs = [["MD5", null], ["SHA-1", "SHA-1"], ["SHA-256", "SHA-256"], ["SHA-384", "SHA-384"], ["SHA-512", "SHA-512"]];
+      const res = [];
+      for (const [name, wc] of algs) {
+        const d = wc ? new Uint8Array(await crypto.subtle.digest(wc, bytes)) : md5(bytes);
+        res.push([name, d]);
+      }
+      if (my !== seq) return;
+      const enc = $("#enc").value;
+      const fmt = d => enc === "b64" ? toB64(d) : enc === "HEX" ? toHex(d).toUpperCase() : toHex(d);
+      const want = $("#cmp").value.trim();
+      let match = null;
+      const rows = res.map(([n, d]) => {
+        const hit = want && (toHex(d) === want.toLowerCase() || toB64(d) === want);
+        if (hit) match = n;
+        return [n + (hit ? "  ✓ match" : ""), fmt(d), hit];
+      });
+      $("#res").innerHTML = kvTable(rows);
+      $("#src").textContent = `· ${label} · ${bytes.length.toLocaleString("en-US")} bytes`;
+      $("#err").textContent = want && !match ? "No algorithm matches the expected hash." : "";
+      $("#cmp").classList.toggle("bad", !!(want && !match));
+    }
+
+    $("#in").addEventListener("input", () => {
+      bytes = new TextEncoder().encode($("#in").value); label = "text"; $("#file").value = ""; run();
+    });
+    $("#file").addEventListener("change", async e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      if (f.size > 1024 ** 3) { $("#err").textContent = "Files over 1 GB are too large to hash in the browser."; return; }
+      $("#src").textContent = "· reading…";
+      bytes = new Uint8Array(await f.arrayBuffer()); label = f.name; run();
+    });
+    $("#enc").addEventListener("change", run);
+    $("#cmp").addEventListener("input", run);
+    run();
+  </script>
+</body>
+</html>

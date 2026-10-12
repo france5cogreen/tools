@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JWT Decoder — Inspect JSON Web Token Header, Payload &amp; Expiry | Free</title>
+  <meta name="description" content="Decode JSON Web Tokens locally: pretty-printed header and payload, exp/iat/nbf as readable dates, expiry status and security warnings (alg none, missing exp). The token never leaves your browser." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/jwt-decoder/" />
+  <meta property="og:title" content="JWT Decoder" />
+  <meta property="og:description" content="Decode a JSON Web Token header and payload, with human-readable expiry dates." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <link rel="stylesheet" href="../tools.css" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"JWT Decoder","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Francesco Di Rienzo"}}</script>
+</head>
+<body data-tool="jwt-decoder" data-root="../">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <div class="crumbs"><a href="../">~/tools</a> / jwt-decoder</div>
+      <header class="tool-head">
+        <span class="eyebrow">// security</span>
+        <h1>JWT Decoder</h1>
+        <p class="lead">Paste a JSON Web Token (with or without the <code>Bearer</code> prefix) to read its header and claims. Decoding only — the signature is not verified.</p>
+        <span class="privacy-note">● decoded in your browser — safe for real tokens</span>
+      </header>
+
+      <div class="panel">
+        <div class="field">
+          <label for="in">Token</label>
+          <textarea id="in" spellcheck="false" style="min-height:110px">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzYwMDAwMDAwLCJleHAiOjE3NjAwMDM2MDB9.c2lnbmF0dXJlLW5vdC12ZXJpZmllZA</textarea>
+        </div>
+        <div class="err" id="err"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Claims</h2>
+        <div id="claims"></div>
+      </div>
+      <div class="panel">
+        <h2>Header</h2>
+        <div class="out" id="hdr"></div>
+      </div>
+      <div class="panel">
+        <h2>Payload</h2>
+        <div class="out" id="pl"></div>
+        <div class="btn-row"><button class="btn sm" data-copy-from="#pl">copy JSON</button></div>
+      </div>
+
+      <article class="explain">
+        <h2>Anatomy of a JWT</h2>
+        <p>A JWT is three Base64URL strings joined by dots: <code>header.payload.signature</code>. The header names the signing algorithm (<code>alg</code>), the payload carries the claims, and the signature proves the first two were not tampered with. Header and payload are only <em>encoded</em>, not encrypted — anyone holding the token can read them, so never put secrets in a JWT.</p>
+        <h2>Registered claims</h2>
+        <ul>
+          <li><code>iss</code> issuer · <code>sub</code> subject · <code>aud</code> audience</li>
+          <li><code>exp</code> expiry · <code>nbf</code> not before · <code>iat</code> issued at — all Unix timestamps in seconds</li>
+          <li><code>jti</code> unique token id, used to prevent replay</li>
+        </ul>
+        <h2>Red flags this decoder points out</h2>
+        <p><code>alg: none</code> (unsigned token — reject it server-side), a missing <code>exp</code> (token valid forever) and tokens that are already expired or not yet valid.</p>
+      </article>
+
+      <section class="related" id="related"></section>
+    </div>
+  </main>
+
+  <script src="../registry.js"></script>
+  <script src="../tools.js"></script>
+  <script>
+    function b64urlJson(part) {
+      let s = part.replace(/-/g, "+").replace(/_/g, "/");
+      s += "=".repeat((4 - s.length % 4) % 4);
+      const bin = atob(s);
+      const txt = new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+      return JSON.parse(txt);
+    }
+    function rel(sec) {
+      const d = Math.round(sec - Date.now() / 1000), a = Math.abs(d);
+      const u = a < 120 ? `${a}s` : a < 7200 ? `${Math.round(a / 60)}m` : a < 172800 ? `${Math.round(a / 3600)}h` : `${Math.round(a / 86400)}d`;
+      return d >= 0 ? `in ${u}` : `${u} ago`;
+    }
+    const when = s => `${new Date(s * 1000).toISOString().replace(".000Z", "Z")}  (${rel(s)})`;
+
+    function run() {
+      const tok = $("#in").value.trim().replace(/^bearer\s+/i, "");
+      const parts = tok.split(".");
+      const fail = msg => {
+        $("#err").textContent = msg; $("#in").classList.add("bad");
+        $("#hdr").textContent = $("#pl").textContent = ""; $("#claims").innerHTML = "";
+      };
+      if (!tok) return fail("");
+      if (parts.length !== 3 && parts.length !== 5) return fail("A JWT has 3 dot-separated parts (5 for an encrypted JWE).");
+      if (parts.length === 5) return fail("This is an encrypted JWE: the payload can only be read with the decryption key.");
+      let h, p;
+      try { h = b64urlJson(parts[0]); p = b64urlJson(parts[1]); }
+      catch { return fail("Header or payload is not valid Base64URL-encoded JSON."); }
+      $("#in").classList.remove("bad");
+
+      const now = Date.now() / 1000, warn = [], rows = [];
+      rows.push(["Algorithm", `${h.alg || "?"}${h.typ ? " · " + h.typ : ""}${h.kid ? " · kid " + h.kid : ""}`]);
+      if (String(h.alg).toLowerCase() === "none") warn.push("alg is \"none\": the token is unsigned.");
+      for (const k of ["iss", "sub", "aud"]) if (p[k] != null) rows.push([k, Array.isArray(p[k]) ? p[k].join(", ") : String(p[k])]);
+      if (typeof p.iat === "number") rows.push(["iat (issued)", when(p.iat)]);
+      if (typeof p.nbf === "number") { rows.push(["nbf (not before)", when(p.nbf)]); if (p.nbf > now) warn.push("Token is not valid yet (nbf in the future)."); }
+      if (typeof p.exp === "number") {
+        const expired = p.exp < now;
+        rows.push(["exp (expires)", when(p.exp), !expired]);
+        rows.push(["Status", expired ? "EXPIRED" : "valid (time-wise)", !expired]);
+        if (typeof p.iat === "number") rows.push(["Lifetime", `${Math.round((p.exp - p.iat) / 60)} minutes`]);
+      } else warn.push("No exp claim: this token never expires.");
+      if (!parts[2]) warn.push("Empty signature.");
+
+      $("#claims").innerHTML = kvTable(rows);
+      $("#hdr").textContent = JSON.stringify(h, null, 2);
+      $("#pl").textContent = JSON.stringify(p, null, 2);
+      $("#err").textContent = warn.map(w => "⚠ " + w).join("  ");
+    }
+    $("#in").addEventListener("input", run);
+    run();
+  </script>
+</body>
+</html>

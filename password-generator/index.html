@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure Password &amp; Passphrase Generator — Entropy Meter | Free</title>
+  <meta name="description" content="Generate strong random passwords and passphrases with the browser's cryptographic RNG. Choose length and character sets, exclude ambiguous characters, see the entropy in bits. Nothing is sent anywhere." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/password-generator/" />
+  <meta property="og:title" content="Password Generator" />
+  <meta property="og:description" content="Cryptographically random passwords and passphrases with live entropy estimate." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <link rel="stylesheet" href="../tools.css" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Password Generator","applicationCategory":"SecurityApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Francesco Di Rienzo"}}</script>
+</head>
+<body data-tool="password-generator" data-root="../">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <div class="crumbs"><a href="../">~/tools</a> / password-generator</div>
+      <header class="tool-head">
+        <span class="eyebrow">// security</span>
+        <h1>Password &amp; Passphrase Generator</h1>
+        <p class="lead">Every character comes from <code>crypto.getRandomValues</code>, the browser's cryptographically secure generator, with rejection sampling so no character is more likely than another.</p>
+        <span class="privacy-note">● generated locally — never transmitted or stored</span>
+      </header>
+
+      <div class="panel">
+        <div class="row">
+          <div class="field narrow">
+            <label for="mode">Mode</label>
+            <select id="mode"><option value="pw">Password</option><option value="pp">Passphrase</option></select>
+          </div>
+          <div class="field">
+            <label for="len"><span id="len-lbl">Length</span>: <span id="len-v" style="color:var(--accent-1)"></span></label>
+            <input type="range" id="len" min="6" max="64" value="20" />
+          </div>
+          <div class="field narrow">
+            <label for="n">How many</label>
+            <input type="number" id="n" min="1" max="50" value="5" />
+          </div>
+        </div>
+        <div class="row" id="pw-opts" style="margin-top:16px;gap:18px">
+          <label class="check"><input type="checkbox" id="lo" checked /> a–z</label>
+          <label class="check"><input type="checkbox" id="up" checked /> A–Z</label>
+          <label class="check"><input type="checkbox" id="dg" checked /> 0–9</label>
+          <label class="check"><input type="checkbox" id="sy" checked /> symbols</label>
+          <label class="check"><input type="checkbox" id="amb" /> exclude ambiguous (Il1O0)</label>
+        </div>
+        <div class="row" id="pp-opts" style="margin-top:16px;gap:18px;display:none">
+          <div class="field narrow"><label for="sep">Separator</label><input type="text" id="sep" value="-" maxlength="3" /></div>
+          <label class="check"><input type="checkbox" id="cap" checked /> Capitalize</label>
+          <label class="check"><input type="checkbox" id="num" checked /> add a number</label>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" id="gen">↻ regenerate</button></div>
+      </div>
+
+      <div class="panel">
+        <h2>Passwords <span id="ent" style="color:var(--text-faint)"></span></h2>
+        <div class="meter"><span id="meter"></span></div>
+        <div id="list" style="margin-top:16px"></div>
+      </div>
+
+      <article class="explain">
+        <h2>How strong is strong enough?</h2>
+        <p>Strength is measured in <strong>bits of entropy</strong>: length × log<sub>2</sub>(alphabet size), valid only when every character is picked at random — which is exactly what this generator does. Rough guide for offline attacks against a fast hash:</p>
+        <ul>
+          <li><strong>&lt; 60 bits</strong> — weak, crackable with commodity GPUs</li>
+          <li><strong>60–80 bits</strong> — fine for online accounts with rate limiting</li>
+          <li><strong>80–100 bits</strong> — strong; good for admin and VPN accounts</li>
+          <li><strong>&gt; 100 bits</strong> — overkill for humans, ideal for API keys and PSKs</li>
+        </ul>
+        <h2>Passwords vs passphrases</h2>
+        <p>A passphrase built from random words is far easier to type and remember at similar strength. This generator uses a list of 1024 short words, so each word adds 10 bits: six words ≈ 60 bits, eight words ≈ 80 bits. Store everything in a password manager either way.</p>
+      </article>
+
+      <section class="related" id="related"></section>
+    </div>
+  </main>
+
+  <script src="../registry.js"></script>
+  <script src="../tools.js"></script>
+  <script>
+    /* 1024 short, common English words (10 bits each) */
+    const WORDS = ("able acid aged area army away baby back ball band bank base bath bear beat beer bell belt best bike bird bite blow blue boat body bold bond bone book boom boot born boss bowl bulk burn bush busy cafe cage cake call calm came camp card care cart case cash cast cell chat chef chip city clay club coal coat code coin cold come cook cool cope copy cord core corn cost crew crop cube cure cute dark data date dawn deal dear debt deck deep deer desk dial diet dirt dish disk dive dock doll dome done door dose down drag draw drop drum dual duck dull dust duty earn ease east easy echo edge edit epic exam exit face fact fade fail fair fall fame farm fast fate fear feed feel feet fell felt file fill film find fine fire firm fish five flag flat fled flip flow foam fold folk font food foot ford fork form fort four free frog fuel full fund fuse gain game gang gate gave gaze gear gene gift girl give glad glow glue goal goat goes gold golf gone good gown grab gray grew grid grip grow gulf guru hack hair half hall hand hang hard hawk head heal heap hear heat held helm help herb hero high hike hill hint hire hold hole holy home hood hook hope horn host hour huge hung hunt icon idea inch info iron item jack jazz jeep jest join joke jump jury just keen keep kept kick kind king kite knee knew knit knot know lace lack lady laid lake lamb lamp land lane last late lawn lead leaf lean left lend lens less lift like lily lime line link lion list live load loan lock loft logo long look loop lord lose loss lost loud love luck lung made mail main make male mall mark mask mass mate math maze meal mean meat meet melt memo menu mere mesh mild milk mill mind mine mint miss mist mode mole mood moon move mule myth nail name navy near neat neck need nest news next nice nine node none noon norm nose note noun oath obey odds okay open oral oven over pace pack page paid pain pair palm park part pass past path peak pear peer pick pier pile pine pink pipe plan play plot plug plus poem poet pole poll pond pony pool poor pork port pose post pour pray prey prop pull pump pure push quiz race rack raft rage raid rail rain rank rare rate read real rear rely rent rest rice rich ride ring rise risk road rock rode role roll roof room root rope rose ruby rule rush rust safe saga sage said sail sake sale salt same sand sang save scan seal seat seed seek seem seen self sell send sent ship shoe shop shot show shut side sign silk sing sink site size skin skip slam slid slim slip slot slow snap snow soap sock soda sofa soft soil sold sole solo song soon sort soul soup sour span spin spot star stay stem step stir stop suit sung sunk sure surf swan swim tail take tale talk tall tank tape task taxi team tear tech tell tend tent term test text thin tide tidy tile till time tiny tire toad told toll tone tool torn tour town trap tray tree trim trio trip true tube tuna tune turn twin type unit urge used user vast verb vest veto view vine visa void volt vote wage wait wake walk wall want ward warm warn wash wave weak wear week well went west whip wide wife wild will wind wine wing wire wise wish wolf wood wool word wore work worm wrap yard yarn year yell yoga zero zone zoom acorn actor adapt adult agent agree ahead alarm album alert alien align alike alive alley allow alloy alpha alter amber amend ample angel anger angle ankle apple apply apron arena argue arise armor arrow aside asset atlas audio audit avoid awake award aware bacon badge bagel baker basic basin beach beard beast begin being below bench berry birth black blade blame blank blast blaze blend bless blind blink block bloom blues bluff blunt board boast bonus boost booth bound brain brake brand brass brave bread break breed brick bride brief bring brisk broad broke brook broom brown brush buddy build bunch burst cabin cable camel canal candy canoe cargo carry carve catch cause cedar chain chair chalk charm chart chase cheap check cheek cheer chess chest chief child chill choir chord chunk civic claim clamp clash class clean clear clerk click cliff climb cloak clock close cloth cloud clown coach coast cobra cocoa coral couch count court cover crack craft crane crash crate crawl crazy cream creek crest crisp crowd crown crumb crush crust cubic curve cycle daily dairy daisy dance decay delay delta dense depot depth derby diary digit diner disco ditch diver dizzy dodge donor doubt dough dozen draft drain drama drank dream dress dried drift drill drink drive drone eagle early earth easel eight elbow elder elite email ember empty enjoy enter entry equal error essay event exact extra fable facet faint fairy faith false fancy feast fence ferry fever fiber field fifty fight final flame flash fleet flesh float flock flood floor flour fluid flute focus foggy force forge forum found frame fresh front frost fruit fudge gamer gauge ghost giant given glass gleam glide globe glory glove grace grade grain grand grant grape graph grasp grass gravy great green greet grill grind groan group grove guard guess guest guide habit happy harsh haven heart heavy hedge hello hobby honey honor horse hotel hound house human humid humor hurry ideal image index inner input irony ivory jelly jewel joint jolly judge juice juicy kayak knife knock label labor laser latch later laugh layer learn lemon level light limit linen liver llama lobby local lodge logic lotus lucky lunar lunch magic major mango manor maple march marsh match mayor medal melon mercy merit metal meter mimic minor minus mixer model money month moose moral motor mount mouse mouth").split(" ");
+    const SETS = { lo: "abcdefghijklmnopqrstuvwxyz", up: "ABCDEFGHIJKLMNOPQRSTUVWXYZ", dg: "0123456789", sy: "!@#$%^&*()-_=+[]{};:,.<>?/~" };
+    const AMB = /[Il1O0o|`'"]/g;
+
+    function randInt(max) {               // unbiased integer in [0, max)
+      const lim = Math.floor(0x100000000 / max) * max;
+      const buf = new Uint32Array(1);
+      do crypto.getRandomValues(buf); while (buf[0] >= lim);
+      return buf[0] % max;
+    }
+
+    function genPassword(len, sets) {
+      // guarantee one char from each chosen set, then fill and shuffle
+      const all = sets.join("");
+      const chars = sets.map(s => s[randInt(s.length)]);
+      while (chars.length < len) chars.push(all[randInt(all.length)]);
+      for (let i = chars.length - 1; i > 0; i--) { const j = randInt(i + 1); [chars[i], chars[j]] = [chars[j], chars[i]]; }
+      return chars.slice(0, len).join("");
+    }
+    function genPhrase(words) {
+      const sep = $("#sep").value, cap = $("#cap").checked;
+      const w = Array.from({ length: words }, () => {
+        const x = WORDS[randInt(WORDS.length)];
+        return cap ? x[0].toUpperCase() + x.slice(1) : x;
+      });
+      if ($("#num").checked) w[randInt(w.length)] += randInt(10);
+      return w.join(sep);
+    }
+
+    function run() {
+      const pp = $("#mode").value === "pp";
+      $("#pw-opts").style.display = pp ? "none" : "";
+      $("#pp-opts").style.display = pp ? "" : "none";
+      const lenEl = $("#len");
+      if (pp) { lenEl.min = 3; lenEl.max = 12; if (+lenEl.value > 12) lenEl.value = 6; }
+      else { lenEl.min = 6; lenEl.max = 64; if (+lenEl.value < 6) lenEl.value = 20; }
+      const len = +lenEl.value, n = Math.min(50, Math.max(1, +$("#n").value || 1));
+      $("#len-lbl").textContent = pp ? "Words" : "Length";
+      $("#len-v").textContent = len;
+
+      let bits, list;
+      if (pp) {
+        bits = len * Math.log2(WORDS.length) + ($("#num").checked ? Math.log2(10) : 0);
+        list = Array.from({ length: n }, () => genPhrase(len));
+      } else {
+        let sets = Object.keys(SETS).filter(k => $("#" + k).checked).map(k => SETS[k]);
+        if ($("#amb").checked) sets = sets.map(s => s.replace(AMB, ""));
+        if (!sets.length) { $("#list").innerHTML = `<div class="err">Select at least one character set.</div>`; return; }
+        bits = len * Math.log2(new Set(sets.join("")).size);
+        list = Array.from({ length: n }, () => genPassword(len, sets));
+      }
+      const pct = Math.min(100, bits / 128 * 100);
+      const label = bits < 60 ? "weak" : bits < 80 ? "ok" : bits < 100 ? "strong" : "very strong";
+      $("#meter").style.width = pct + "%";
+      $("#meter").style.background = bits < 60 ? "#f87171" : bits < 80 ? "#fbbf24" : "var(--accent)";
+      $("#ent").textContent = `· ≈ ${Math.round(bits)} bits · ${label}`;
+      $("#list").innerHTML = kvTable(list.map((p, i) => [`#${i + 1}`, p, i === 0]));
+    }
+    ["#mode", "#lo", "#up", "#dg", "#sy", "#amb", "#cap", "#num"].forEach(s => $(s).addEventListener("change", run));
+    ["#len", "#n", "#sep"].forEach(s => $(s).addEventListener("input", run));
+    $("#gen").addEventListener("click", run);
+    run();
+  </script>
+</body>
+</html>

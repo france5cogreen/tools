@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC Address Formatter &amp; Converter — Cisco, Colon, Hyphen | Free</title>
+  <meta name="description" content="Convert MAC addresses in bulk between colon (aa:bb:cc), hyphen (AA-BB-CC), Cisco dotted (aabb.ccdd.eeff) and bare formats. Detects unicast/multicast and locally administered addresses." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/mac-formatter/" />
+  <meta property="og:title" content="MAC Address Formatter" />
+  <meta property="og:description" content="Convert MACs between colon, hyphen, Cisco dotted and bare formats, in bulk." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <link rel="stylesheet" href="../tools.css" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"MAC Address Formatter","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Francesco Di Rienzo"}}</script>
+</head>
+<body data-tool="mac-formatter" data-root="../">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <div class="crumbs"><a href="../">~/tools</a> / mac-formatter</div>
+      <header class="tool-head">
+        <span class="eyebrow">// networking</span>
+        <h1>MAC Address Formatter</h1>
+        <p class="lead">Paste MAC addresses in any format, one per line or straight out of a <code>show mac address-table</code>. Pick the output format and copy the clean list.</p>
+        <span class="privacy-note">● runs 100% in your browser — nothing is uploaded</span>
+      </header>
+
+      <div class="panel">
+        <div class="field">
+          <label for="in">MAC addresses (any format, any surrounding text)</label>
+          <textarea id="in" spellcheck="false">00:1A:2B:3C:4D:5E
+001a.2b3c.4d5f
+00-1A-2B-3C-4D-60
+  10    3c22.fb12.ab01    DYNAMIC     Gi1/0/12
+01005E0000FB</textarea>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="field">
+            <label for="fmt">Output format</label>
+            <select id="fmt">
+              <option value="colon">aa:bb:cc:dd:ee:ff — Linux, FortiOS</option>
+              <option value="hyphen">AA-BB-CC-DD-EE-FF — Windows</option>
+              <option value="cisco">aabb.ccdd.eeff — Cisco IOS</option>
+              <option value="bare">aabbccddeeff — bare</option>
+              <option value="hpe">aabbcc-ddeeff — HPE / Aruba</option>
+            </select>
+          </div>
+          <div class="field narrow">
+            <label for="case">Case</label>
+            <select id="case"><option value="lower">lower</option><option value="upper">UPPER</option></select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px">
+          <label class="check"><input type="checkbox" id="details" /> show type details</label>
+          <label class="check"><input type="checkbox" id="dedupe" checked /> remove duplicates</label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Result <span id="count" style="color:var(--text-faint)"></span></h2>
+        <div class="out" id="out"></div>
+        <div class="btn-row"><button class="btn sm" data-copy-from="#out">copy all</button></div>
+      </div>
+
+      <article class="explain">
+        <h2>MAC address formats by vendor</h2>
+        <ul>
+          <li><strong>Colon</strong> <code>00:1a:2b:3c:4d:5e</code> — Linux, macOS, FortiOS, most RFCs</li>
+          <li><strong>Hyphen</strong> <code>00-1A-2B-3C-4D-5E</code> — Windows (<code>ipconfig /all</code>, <code>getmac</code>)</li>
+          <li><strong>Cisco dotted</strong> <code>001a.2b3c.4d5e</code> — Cisco IOS / NX-OS MAC tables and ACLs</li>
+          <li><strong>HPE / Aruba</strong> <code>001a2b-3c4d5e</code> — ProCurve / ArubaOS-Switch</li>
+        </ul>
+        <h2>What the type details mean</h2>
+        <p>The least significant bit of the first byte marks a <strong>multicast</strong> (group) address; the second bit marks a <strong>locally administered</strong> address — typical of randomized Wi-Fi MACs on phones and of virtual machines. The first three bytes of a universally administered address are the vendor <strong>OUI</strong>.</p>
+      </article>
+
+      <section class="related" id="related"></section>
+    </div>
+  </main>
+
+  <script src="../registry.js"></script>
+  <script src="../tools.js"></script>
+  <script>
+    const RX = /\b(?:[0-9a-f]{2}([:-])(?:[0-9a-f]{2}\1){4}[0-9a-f]{2}|[0-9a-f]{4}\.[0-9a-f]{4}\.[0-9a-f]{4}|[0-9a-f]{6}-[0-9a-f]{6}|[0-9a-f]{12})\b/gi;
+
+    function fmt(hex, f) {
+      const p = hex.match(/../g);
+      return {
+        colon: p.join(":"), hyphen: p.join("-"), bare: hex,
+        cisco: hex.match(/.{4}/g).join("."), hpe: hex.slice(0, 6) + "-" + hex.slice(6)
+      }[f];
+    }
+    function info(hex) {
+      if (hex === "ffffffffffff") return "broadcast";
+      const b0 = parseInt(hex.slice(0, 2), 16);
+      return [(b0 & 1) ? "multicast" : "unicast", (b0 & 2) ? "locally administered" : `OUI ${hex.slice(0, 6).toUpperCase()}`].join(", ");
+    }
+
+    function run() {
+      const f = $("#fmt").value, up = $("#case").value === "upper";
+      const found = ($("#in").value.match(RX) || []).map(m => m.replace(/[^0-9a-f]/gi, "").toLowerCase());
+      const list = $("#dedupe").checked ? [...new Set(found)] : found;
+      const lines = list.map(h => {
+        let s = fmt(h, f); if (up) s = s.toUpperCase();
+        return $("#details").checked ? `${s}    # ${info(h)}` : s;
+      });
+      $("#out").textContent = lines.join("\n") || "# no MAC addresses found";
+      $("#count").textContent = list.length ? `· ${list.length}` : "";
+    }
+    $("#in").addEventListener("input", run);
+    ["#fmt", "#case", "#details", "#dedupe"].forEach(s => $(s).addEventListener("change", run));
+    run();
+  </script>
+</body>
+</html>

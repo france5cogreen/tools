@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free Network, Security &amp; Sysadmin Tools — Francesco Di Rienzo</title>
+  <meta name="description" content="Free, privacy-friendly tools for network and security engineers: subnet calculator, CIDR converter, FortiGate address generator, MAC formatter, password and hash generators, JWT decoder and more. Everything runs in your browser." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/" />
+  <meta property="og:title" content="Free Network &amp; Security Tools" />
+  <meta property="og:description" content="Subnet calculator, CIDR converter, FortiGate CLI generator, hash, JWT, chmod and more — all client-side." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+  <link rel="stylesheet" href="tools.css" />
+</head>
+<body data-root="">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <header class="tool-head">
+        <span class="eyebrow">// toolbox</span>
+        <h1>Free network &amp; security tools</h1>
+        <p class="lead">The small utilities I reach for during firewall migrations, audits and day-to-day sysadmin work. No sign-up, no tracking of what you paste: every tool runs entirely in your browser.</p>
+        <span class="privacy-note">● 100% client-side — nothing you type leaves this page</span>
+      </header>
+
+      <div class="tool-grid" id="tool-grid"></div>
+
+      <article class="explain">
+        <h2>Why these tools</h2>
+        <p>Most online calculators send your input to a server and wrap it in ads. When the input is a customer's addressing plan, a production JWT or a firmware image, that is not acceptable. These pages are static files: the logic is plain JavaScript you can read with View Source, and it works offline once loaded.</p>
+        <h2>Need more than a tool?</h2>
+        <p>I design and deliver firewall migrations, HA clusters, centralized logging and secure remote access on Fortinet, plus Linux hardening and automation. <a href="/#contact" style="color:var(--accent-1)">Get in touch</a>.</p>
+      </article>
+    </div>
+  </main>
+
+  <script src="registry.js"></script>
+  <script src="tools.js"></script>
+</body>
+</html>

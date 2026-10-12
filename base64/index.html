@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Base64 Encode / Decode &amp; URL Encoder Online — UTF-8 Safe | Free</title>
+  <meta name="description" content="Encode and decode Base64, Base64URL and URL percent-encoding with full UTF-8 support. Decode Base64 to a downloadable file. Runs entirely in your browser." />
+  <link rel="canonical" href="https://france5cogreen.github.io/tools/base64/" />
+  <meta property="og:title" content="Base64 &amp; URL Encoder / Decoder" />
+  <meta property="og:description" content="Encode and decode Base64, Base64URL and percent-encoding with full UTF-8 support." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <link rel="stylesheet" href="../tools.css" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Base64 & URL Encoder / Decoder","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"author":{"@type":"Person","name":"Francesco Di Rienzo"}}</script>
+</head>
+<body data-tool="base64" data-root="../">
+  <div class="bg-grid"></div>
+  <div class="bg-vignette"></div>
+  <main class="tools-page">
+    <div class="wrap">
+      <div class="crumbs"><a href="../">~/tools</a> / base64</div>
+      <header class="tool-head">
+        <span class="eyebrow">// dev</span>
+        <h1>Base64 &amp; URL Encoder / Decoder</h1>
+        <p class="lead">Choose a codec and a direction. Text is handled as UTF-8, so accents and emoji survive the round trip.</p>
+        <span class="privacy-note">● runs 100% in your browser — nothing is uploaded</span>
+      </header>
+
+      <div class="panel">
+        <div class="row">
+          <div class="field">
+            <label for="codec">Codec</label>
+            <select id="codec">
+              <option value="b64">Base64 (RFC 4648)</option>
+              <option value="b64url">Base64URL (no padding)</option>
+              <option value="url">URL percent-encoding (component)</option>
+              <option value="urlfull">URL percent-encoding (full URL)</option>
+            </select>
+          </div>
+          <div class="field narrow">
+            <label for="dir">Direction</label>
+            <select id="dir"><option value="enc">encode</option><option value="dec">decode</option></select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px">
+          <label for="in">Input</label>
+          <textarea id="in" spellcheck="false">Ciao, perché? ✓ user@example.com</textarea>
+        </div>
+        <div class="err" id="err"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Output</h2>
+        <div class="out" id="out"></div>
+        <div class="btn-row">
+          <button class="btn sm" data-copy-from="#out">copy</button>
+          <button class="btn sm" id="swap">⇅ use as input</button>
+          <button class="btn sm" id="dl" style="display:none">download decoded bytes</button>
+        </div>
+      </div>
+
+      <article class="explain">
+        <h2>Base64 vs Base64URL</h2>
+        <p>Base64 turns every 3 bytes into 4 printable characters from <code>A–Z a–z 0–9 + /</code>, padding with <code>=</code>. Base64URL swaps <code>+</code> and <code>/</code> for <code>-</code> and <code>_</code> and usually drops the padding, so the result is safe inside URLs, file names and JWTs. Base64 is an encoding, not encryption: anyone can decode it.</p>
+        <h2>Component vs full URL encoding</h2>
+        <p><strong>Component</strong> (<code>encodeURIComponent</code>) escapes everything that has meaning in a URL, including <code>/ ? &amp; =</code> — use it for a single query-string value. <strong>Full URL</strong> (<code>encodeURI</code>) leaves the URL structure intact and only escapes spaces and non-ASCII characters.</p>
+        <h2>Common uses</h2>
+        <ul>
+          <li>HTTP Basic auth headers: <code>Authorization: Basic base64(user:password)</code></li>
+          <li>Kubernetes Secrets, data URIs, email attachments (MIME)</li>
+          <li>Reading the payload of a JWT or a SAML response</li>
+        </ul>
+      </article>
+
+      <section class="related" id="related"></section>
+    </div>
+  </main>
+
+  <script src="../registry.js"></script>
+  <script src="../tools.js"></script>
+  <script>
+    let lastBytes = null;
+    const bytesToB64 = b => { let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000)); return btoa(s); };
+    function b64ToBytes(s, url) {
+      s = s.replace(/\s+/g, "");
+      if (url) s = s.replace(/-/g, "+").replace(/_/g, "/");
+      s += "=".repeat((4 - s.length % 4) % 4);
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(s)) throw new Error("Input contains characters that are not valid Base64.");
+      return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+    }
+
+    function run() {
+      const codec = $("#codec").value, enc = $("#dir").value === "enc", v = $("#in").value;
+      let out = "", err = "";
+      lastBytes = null;
+      try {
+        if (codec === "b64" || codec === "b64url") {
+          if (enc) {
+            out = bytesToB64(new TextEncoder().encode(v));
+            if (codec === "b64url") out = out.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+          } else {
+            lastBytes = b64ToBytes(v, codec === "b64url");
+            try { out = new TextDecoder("utf-8", { fatal: true }).decode(lastBytes); }
+            catch { out = `[binary data, ${lastBytes.length} bytes — use “download decoded bytes”]`; }
+          }
+        } else {
+          const full = codec === "urlfull";
+          out = enc ? (full ? encodeURI(v) : encodeURIComponent(v)) : (full ? decodeURI(v) : decodeURIComponent(v.replace(/\+/g, " ")));
+        }
+      } catch (e) {
+        err = e instanceof URIError ? "Malformed percent-encoding (a % not followed by two hex digits?)." : e.message;
+      }
+      $("#out").textContent = out;
+      $("#err").textContent = err;
+      $("#in").classList.toggle("bad", !!err);
+      $("#dl").style.display = lastBytes ? "" : "none";
+    }
+    $("#in").addEventListener("input", run);
+    ["#codec", "#dir"].forEach(s => $(s).addEventListener("change", run));
+    $("#swap").addEventListener("click", () => {
+      $("#in").value = $("#out").textContent;
+      $("#dir").value = $("#dir").value === "enc" ? "dec" : "enc";
+      run();
+    });
+    $("#dl").addEventListener("click", () => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([lastBytes]));
+      a.download = "decoded.bin"; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+    run();
+  </script>
+</body>
+</html>
